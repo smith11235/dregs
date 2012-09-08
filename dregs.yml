@@ -1,0 +1,17 @@
+user:
+- generate scaffold User email:string handle:string passcode:string
+command:
+- generate scaffold Command user:references str:string ran_at:datetime 
+token:
+- generate scaffold Token command:references str:string position:integer  
+
+Thor:
+- dregs
+  - setup
+	- record
+	- run
+
+tag: 
+- generate scaffold Tag <polymorphic type>:references key:string <value>:string
+
+ 

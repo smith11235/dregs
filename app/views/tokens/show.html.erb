@@ -1,0 +1,20 @@
+<p id="notice"><%= notice %></p>
+
+<p>
+  <b>Command:</b>
+  <%= @token.command %>
+</p>
+
+<p>
+  <b>Str:</b>
+  <%= @token.str %>
+</p>
+
+<p>
+  <b>Position:</b>
+  <%= @token.position %>
+</p>
+
+
+<%= link_to 'Edit', edit_token_path(@token) %> |
+<%= link_to 'Back', tokens_path %>
