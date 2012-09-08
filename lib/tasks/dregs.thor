@@ -36,5 +36,10 @@ class Dregs < Thor
 		puts "Command setup for: #{user.email}".green
 	end
 
+	desc "execute", "load new command line history, parse arguments and options"
+	def execute( email, search = nil )
+		puts "Hello: #{email}"
+		puts "Searching for: #{search}" unless search.nil?
+	end
 
 end
