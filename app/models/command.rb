@@ -2,17 +2,6 @@ class Command < ActiveRecord::Base
   belongs_to :user
   attr_accessible :ran_at, :str
 
-	def self.load_history( user_handle )
-		Command.set_user( :handle => user_handle )
-
-		puts "Coal User: #{@@user[:handle]}"
-		history_file = File.join( ENV["HOME"], ".coal_history" ) 
-		raise "Can't Find: #{history_file}, did you run setup" unless File.file? history_file
-
-		original_commands = File.open( history_file, "r" ).readlines
-		Command.save_commands( original_commands )
-		 
-	end
 
 	def self.command_exists?( original )
 		command = Command.where( [ "user_id = ? AND original = ?", $user.id, original ] ).first
