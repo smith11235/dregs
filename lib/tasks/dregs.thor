@@ -1,6 +1,64 @@
 require "./config/environment"
 class Dregs < Thor
 
+	desc "search", "search for distinct commands matching the passed string"
+	def search( email, search = nil )
+		user = User.where( :email => email ).first
+		raise "Unknown User Email: #{email}" if user.nil?
+
+		puts "Searching for: #{search}" unless search.nil?
+		matched_commands = user.commands.find( :all,
+																					:select => "str, COUNT( id ) AS occurances",
+																					:conditions => [ "str LIKE ?", "%#{search}%" ],
+																					:group => "str",
+																					:order => "occurances DESC" 
+																				 )
+
+		matched_commands.each_with_index do |command,i|
+			puts "  - #{command.occurances}: " + command.str.red
+		end
+	end
+
+	desc "load_history", "load history from ~/.dregs_history"
+	def load_history( email )
+		user = User.where( :email => email ).first
+		raise "Unknown User Email: #{email}" if user.nil?
+
+		history_file = File.join( ENV["HOME"], ".dregs_history" ) 
+		raise "Can't Find: #{history_file}, did you run setup" unless File.file? history_file
+
+		command_strings = File.open( history_file, "r" ).readlines
+
+		# process strings
+		data = Array.new
+		command_strings.each do |str|
+			if str =~ /^s*\d+\s+\[\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\]\s+.+/ 
+				puts "Invalid Command Format: #{str}".yellow
+				puts "Try Rerunning thor dregs:setup"
+				next
+			end
+			str.chomp!
+			str.gsub!( /^\s+\d+\s+/, '' ) # remove command number, not a valid id for dregs
+			time_string = str[ /^\[\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\]/ ]
+			time_string.gsub!( /(\[|\])/, '' )
+			str.gsub!( /^\[.+\]\s/,'' )
+
+			ran_at = DateTime.strptime( time_string, '%Y-%m-%d %H:%M:%S' ).to_time
+
+			data << { :str => str, :ran_at => ran_at }
+		end
+
+		new_commands = 0
+		data.each do | command_data |
+			if user.commands.where( :str => command_data[:str], :ran_at => command_data[:ran_at] ).first.nil?
+				command = user.commands.create( :str => command_data[:str], :ran_at => command_data[:ran_at] )
+				command.save_tokens
+				new_commands += 1 
+			end
+		end
+		puts "New Commands: #{new_commands}".green
+	end
+
 	desc "setup", "setup 'dregs' for global use on this system"
 	def setup( email )
 
@@ -36,49 +94,4 @@ class Dregs < Thor
 		puts "Command setup for: #{user.email}".green
 	end
 
-	desc "search", "search for distinct commands matching the passed string"
-	def search( email, search = nil )
-		user = User.where( :email => email ).first
-		raise "Unknown User Email: #{email}" if user.nil?
-		puts "Hello: #{user.email}".green
-		puts "Searching for: #{search}" unless search.nil?
-	end
-
-	desc "load_history", "load history from ~/.dregs_history"
-	def load_history( email )
-		user = User.where( :email => email ).first
-		raise "Unknown User Email: #{email}" if user.nil?
-
-		history_file = File.join( ENV["HOME"], ".dregs_history" ) 
-		raise "Can't Find: #{history_file}, did you run setup" unless File.file? history_file
-
-		command_strings = File.open( history_file, "r" ).readlines
-
-		# process strings
-		data = Array.new
-		command_strings.each do |str|
-			if str =~ /^s*\d+\s+\[\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\]\s+.+/ 
-				puts "Invalid Command Format: #{str}".yellow
-				puts "Try Rerunning thor dregs:setup"
-				next
-			end
-			str.gsub!( /^\s+\d+\s+/, '' ) # remove command number, not a valid id for dregs
-			time_string = str[ /^\[\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\]/ ]
-			time_string.gsub!( /(\[|\])/, '' )
-			str.gsub!( /^\[.+\]\s/,'' )
-
-			ran_at = DateTime.strptime( time_string, '%Y-%m-%d %H:%M:%S' ).to_time
-
-			data << { :str => str, :ran_at => ran_at }
-		end
-
-		new_commands = 0
-		data.each do | command_data |
-			if user.commands.where( :str => command_data[:str], :ran_at => command_data[:ran_at] ).first.nil?
-				command = user.commands.create( :str => command_data[:str], :ran_at => command_data[:ran_at] )
-				new_commands += 1 
-			end
-		end
-		puts "New Commands: #{new_commands}".green
-	end
 end

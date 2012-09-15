@@ -1,43 +1,12 @@
 class Command < ActiveRecord::Base
   belongs_to :user
   attr_accessible :ran_at, :str
-
-
-	def self.command_exists?( original )
-		command = Command.where( [ "user_id = ? AND original = ?", $user.id, original ] ).first
-		! command.nil?
-	end
-
-	def self.save_commands( original_commands )
-		new_commands = 0
-		i = 0
-		puts "# commands to load: #{original_commands.size}"
-		original_commands.each do |original_command|
-			i += 1
-			puts " - #{i}/#{original_commands.size}" if original_commands.size > 40 && i > 0 && i % ( original_commands.size / 7 ) == 0
-			next if Command.command_exists?( original_command )	
-			command = Command.new
-			command.original = original_command 
-			description = { "ENV" => { "TTY_NAME" => ENV["TTY_NAME"], "HISTFILE" => ENV["HISTFILE"] } }
-			command.description = description.to_yaml 
-			command.user_id = @@user.id
-			command.save
-			command.save_tokens
-			new_commands += 1
-		end
-		puts "Loaded #{new_commands} new commands".green
-	end
+	has_many :tokens
 
 	def save_tokens
-		raw_tokens = self.original.split( /\s+/ )  
-		token_offset = 0
-		raw_tokens.each do |raw_token|
-			token = Token.new	
-			token.command_id = self.id	
-			token.offset = token_offset
-			token.original = raw_token
-			token.save
-			token_offset += 1
+		token_strs = self.str.split( /\s+/ )  
+		token_strs.each_with_index do |token_str,i|
+			self.tokens.create( :position => i, :str => token_str ) 
 		end
 	end
 
